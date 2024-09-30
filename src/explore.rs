@@ -2,18 +2,18 @@ use crate::error::{Error, Result};
 
 use crate::display::*;
 
-pub type ExploreResult<'a> = Result<Option<Node<'a>>>;
+pub type ExploreResult<'a> = Result<Option<NodeObject<'a>>>;
 
 /// The trait each node must implement.
 /// This trait is templated by the library error, as we may face this error while exploring.
-pub trait NodeTrait {
+pub trait Node {
     fn next(&self, key: &str) -> ExploreResult;
 
     fn sep(&self) -> &str {
         "::"
     }
 
-    fn explore<'k>(&self, key: &'k str) -> Result<(Option<Node>, Option<&'k str>)> {
+    fn explore<'k>(&self, key: &'k str) -> Result<(Option<NodeObject>, Option<&'k str>)> {
         if let Some((first, left)) = key.split_once(self.sep()) {
             self.next(first).map(|next_node| (next_node, Some(left)))
         } else {
@@ -32,30 +32,30 @@ pub trait NodeTrait {
 /// A actuall Node
 ///
 /// May owned a Box or simply borrow it.
-pub enum Node<'a> {
-    Borrowed(&'a dyn NodeTrait),
-    Owned(Box<dyn NodeTrait>),
+pub enum NodeObject<'a> {
+    Borrowed(&'a dyn Node),
+    Owned(Box<dyn Node>),
 }
 
-impl<'a, T> From<Box<T>> for Node<'a>
+impl<'a, T> From<Box<T>> for NodeObject<'a>
 where
-    T: NodeTrait + 'static,
+    T: Node + 'static,
 {
     fn from(b: Box<T>) -> Self {
         Self::Owned(b)
     }
 }
 
-impl<'a, T> From<&'a T> for Node<'a>
+impl<'a, T> From<&'a T> for NodeObject<'a>
 where
-    T: NodeTrait,
+    T: Node,
 {
     fn from(r: &'a T) -> Self {
         Self::Borrowed(r)
     }
 }
 
-impl<'a> NodeTrait for Node<'a> {
+impl<'a> Node for NodeObject<'a> {
     fn next(&self, key: &str) -> ExploreResult {
         match self {
             Self::Borrowed(b) => b.next(key),
@@ -63,7 +63,7 @@ impl<'a> NodeTrait for Node<'a> {
         }
     }
 
-    fn explore<'k>(&self, key: &'k str) -> Result<(Option<Node>, Option<&'k str>)> {
+    fn explore<'k>(&self, key: &'k str) -> Result<(Option<NodeObject>, Option<&'k str>)> {
         match self {
             Self::Borrowed(b) => b.explore(key),
             Self::Owned(o) => o.explore(key),
@@ -78,9 +78,9 @@ impl<'a> NodeTrait for Node<'a> {
     }
 }
 
-pub fn explore<Output, F>(node: &dyn NodeTrait, key: &str, mut display: F) -> Result<Output>
+pub fn explore<Output, F>(node: &dyn Node, key: &str, mut display: F) -> Result<Output>
 where
-    F: FnMut(&dyn NodeTrait) -> Output,
+    F: FnMut(&dyn Node) -> Output,
 {
     if key.is_empty() {
         Ok(display(node))
@@ -93,37 +93,37 @@ where
     }
 }
 
-pub fn explore_to_string(node: &dyn NodeTrait, key: &str) -> Result<String> {
-    let d = |n: &dyn NodeTrait| display_to_string(n.display());
+pub fn explore_to_string(node: &dyn Node, key: &str) -> Result<String> {
+    let d = |n: &dyn Node| display_to_string(n.display());
     explore(node, key, d)?
 }
 
-impl NodeTrait for String {
+impl Node for String {
     fn display(&self) -> &dyn Display {
         self
     }
 
-    fn next(&self, _key: &str) -> Result<Option<Node>> {
+    fn next(&self, _key: &str) -> Result<Option<NodeObject>> {
         Ok(None)
     }
 }
 
-impl NodeTrait for &str {
+impl Node for &str {
     fn display(&self) -> &dyn Display {
         self
     }
 
-    fn next(&self, _key: &str) -> Result<Option<Node>> {
+    fn next(&self, _key: &str) -> Result<Option<NodeObject>> {
         Ok(None)
     }
 }
 
-impl NodeTrait for Vec<u8> {
+impl Node for Vec<u8> {
     fn display(&self) -> &dyn Display {
         self
     }
 
-    fn next(&self, _key: &str) -> Result<Option<Node>> {
+    fn next(&self, _key: &str) -> Result<Option<NodeObject>> {
         Ok(None)
     }
 }
@@ -141,8 +141,8 @@ mod test {
         }
     }
 
-    impl NodeTrait for StringNode {
-        fn next(&self, key: &str) -> Result<Option<Node>> {
+    impl Node for StringNode {
+        fn next(&self, key: &str) -> Result<Option<NodeObject>> {
             let index = key
                 .parse::<usize>()
                 .map_err(|_e| Error::Key(key.to_string()))?;
@@ -168,12 +168,12 @@ mod test {
         }
     }
 
-    impl NodeTrait for Child {
-        fn next(&self, key: &str) -> Result<Option<Node>> {
+    impl Node for Child {
+        fn next(&self, key: &str) -> Result<Option<NodeObject>> {
             match key {
                 "name" => {
                     let temp_node = Box::new(StringNode(self.name.clone()));
-                    Ok(Some(Node::Owned(temp_node)))
+                    Ok(Some(NodeObject::Owned(temp_node)))
                 }
                 _ => Ok(None),
             }
@@ -198,11 +198,11 @@ mod test {
         }
     }
 
-    impl NodeTrait for Root {
-        fn next(&self, key: &str) -> Result<Option<Node>> {
+    impl Node for Root {
+        fn next(&self, key: &str) -> Result<Option<NodeObject>> {
             Ok(match key {
-                "b" => Some(Node::Borrowed(&self.b)),
-                "c" => Some(Node::Borrowed(&self.c)),
+                "b" => Some(NodeObject::Borrowed(&self.b)),
+                "c" => Some(NodeObject::Borrowed(&self.c)),
                 _ => None,
             })
         }

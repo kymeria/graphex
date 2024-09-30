@@ -8,12 +8,12 @@ fn conv(err: std::io::Error) -> graphex::Error {
     graphex::Error::Other(Box::new(err))
 }
 
-impl NodeTrait for Directory {
+impl Node for Directory {
     fn sep(&self) -> &str {
         "/"
     }
 
-    fn next(&self, key: &str) -> Result<Option<Node>> {
+    fn next(&self, key: &str) -> Result<Option<NodeObject>> {
         let mut child_path = self.0.clone();
         child_path.push(key);
         if child_path.is_dir() {
@@ -60,8 +60,8 @@ impl graphex::Display for Directory {
 
 struct File(pub PathBuf);
 
-impl NodeTrait for File {
-    fn next(&self, _key: &str) -> Result<Option<Node>> {
+impl Node for File {
+    fn next(&self, _key: &str) -> Result<Option<NodeObject>> {
         Ok(None)
     }
 
@@ -79,8 +79,8 @@ impl graphex::Display for File {
 
 struct Link(pub PathBuf);
 
-impl NodeTrait for Link {
-    fn next(&self, _key: &str) -> Result<Option<Node>> {
+impl Node for Link {
+    fn next(&self, _key: &str) -> Result<Option<NodeObject>> {
         Ok(None)
     }
 

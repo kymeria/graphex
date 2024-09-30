@@ -5,7 +5,7 @@ This library provide few traits to create a tool to explore a pseudo graph.
 
 ## Traits
 
-- Impl `NodeTrait` to allow the node of your graph to be explored.
+- Impl `Node` to allow the node of your graph to be explored.
 - Impl `Display` to display the result of the exploration.
 
 ## Faq
@@ -14,7 +14,7 @@ This library provide few traits to create a tool to explore a pseudo graph.
 
 No, and this is why it is a **pseudo** graph.
 
-`NodeTrait::next` can create node at runtime and return it.
+`Node::next` can create node at runtime and return it.
 
 ### Why not using `std::fmt::Display` ?
 
