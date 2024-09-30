@@ -2,7 +2,7 @@ use crate::error::{Error, Result};
 
 use crate::display::*;
 
-pub type ExploreResult<'a> = Result<Option<NodeObject<'a>>>;
+pub type ExploreResult<'a> = Result<NodeObject<'a>>;
 
 /// The trait each node must implement.
 /// This trait is templated by the library error, as we may face this error while exploring.
@@ -13,7 +13,7 @@ pub trait Node {
         "::"
     }
 
-    fn explore<'k>(&self, key: &'k str) -> Result<(Option<NodeObject>, Option<&'k str>)> {
+    fn explore<'k>(&self, key: &'k str) -> Result<(NodeObject, Option<&'k str>)> {
         if let Some((first, left)) = key.split_once(self.sep()) {
             self.next(first).map(|next_node| (next_node, Some(left)))
         } else {
@@ -63,7 +63,7 @@ impl<'a> Node for NodeObject<'a> {
         }
     }
 
-    fn explore<'k>(&self, key: &'k str) -> Result<(Option<NodeObject>, Option<&'k str>)> {
+    fn explore<'k>(&self, key: &'k str) -> Result<(NodeObject, Option<&'k str>)> {
         match self {
             Self::Borrowed(b) => b.explore(key),
             Self::Owned(o) => o.explore(key),
@@ -86,9 +86,8 @@ where
         Ok(display(node))
     } else {
         match node.explore(key)? {
-            (Some(node), Some(key)) => explore(&node, key, display),
-            (Some(node), None) => Ok(display(&node)),
-            (None, _) => Err(Error::Key(key.to_string())),
+            (node, Some(key)) => explore(&node, key, display),
+            (node, None) => Ok(display(&node)),
         }
     }
 }
@@ -103,8 +102,8 @@ impl Node for String {
         self
     }
 
-    fn next(&self, _key: &str) -> Result<Option<NodeObject>> {
-        Ok(None)
+    fn next(&self, key: &str) -> ExploreResult {
+        Err(Error::key(key))
     }
 }
 
@@ -113,8 +112,8 @@ impl Node for &str {
         self
     }
 
-    fn next(&self, _key: &str) -> Result<Option<NodeObject>> {
-        Ok(None)
+    fn next(&self, key: &str) -> ExploreResult {
+        Err(Error::key(key))
     }
 }
 
@@ -123,8 +122,8 @@ impl Node for Vec<u8> {
         self
     }
 
-    fn next(&self, _key: &str) -> Result<Option<NodeObject>> {
-        Ok(None)
+    fn next(&self, key: &str) -> ExploreResult {
+        Err(Error::key(key))
     }
 }
 
@@ -142,14 +141,12 @@ mod test {
     }
 
     impl Node for StringNode {
-        fn next(&self, key: &str) -> Result<Option<NodeObject>> {
-            let index = key
-                .parse::<usize>()
-                .map_err(|_e| Error::Key(key.to_string()))?;
-            Ok(self
-                .0
+        fn next(&self, key: &str) -> ExploreResult {
+            let index = key.parse::<usize>().map_err(|_e| Error::key(key))?;
+            self.0
                 .get(index..index + 1)
-                .map(|s| Box::new(s.to_string()).into()))
+                .ok_or_else(|| Error::key(key))
+                .map(|s| Box::new(s.to_string()).into())
         }
 
         fn display(&self) -> &dyn Display {
@@ -169,13 +166,13 @@ mod test {
     }
 
     impl Node for Child {
-        fn next(&self, key: &str) -> Result<Option<NodeObject>> {
+        fn next(&self, key: &str) -> ExploreResult {
             match key {
                 "name" => {
                     let temp_node = Box::new(StringNode(self.name.clone()));
-                    Ok(Some(NodeObject::Owned(temp_node)))
+                    Ok(NodeObject::Owned(temp_node))
                 }
-                _ => Ok(None),
+                _ => Err(Error::key(key)),
             }
         }
 
@@ -199,12 +196,12 @@ mod test {
     }
 
     impl Node for Root {
-        fn next(&self, key: &str) -> Result<Option<NodeObject>> {
-            Ok(match key {
-                "b" => Some(NodeObject::Borrowed(&self.b)),
-                "c" => Some(NodeObject::Borrowed(&self.c)),
-                _ => None,
-            })
+        fn next(&self, key: &str) -> ExploreResult {
+            match key {
+                "b" => Ok(NodeObject::Borrowed(&self.b)),
+                "c" => Ok(NodeObject::Borrowed(&self.c)),
+                _ => Err(Error::key(key)),
+            }
         }
 
         fn display(&self) -> &dyn Display {

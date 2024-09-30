@@ -13,17 +13,17 @@ impl Node for Directory {
         "/"
     }
 
-    fn next(&self, key: &str) -> Result<Option<NodeObject>> {
+    fn next(&self, key: &str) -> ExploreResult {
         let mut child_path = self.0.clone();
         child_path.push(key);
         if child_path.is_dir() {
-            Ok(Some(Box::new(Directory(child_path)).into()))
+            Ok(Box::new(Directory(child_path)).into())
         } else if child_path.is_file() {
-            Ok(Some(Box::new(File(child_path)).into()))
+            Ok(Box::new(File(child_path)).into())
         } else if child_path.is_symlink() {
-            Ok(Some(Box::new(Link(child_path)).into()))
+            Ok(Box::new(Link(child_path)).into())
         } else {
-            Ok(None)
+            Err(Error::key(key))
         }
     }
     fn display(&self) -> &dyn Display {
@@ -61,8 +61,8 @@ impl graphex::Display for Directory {
 struct File(pub PathBuf);
 
 impl Node for File {
-    fn next(&self, _key: &str) -> Result<Option<NodeObject>> {
-        Ok(None)
+    fn next(&self, key: &str) -> ExploreResult {
+        Err(Error::key(key))
     }
 
     fn display(&self) -> &dyn Display {
@@ -80,8 +80,8 @@ impl graphex::Display for File {
 struct Link(pub PathBuf);
 
 impl Node for Link {
-    fn next(&self, _key: &str) -> Result<Option<NodeObject>> {
-        Ok(None)
+    fn next(&self, key: &str) -> ExploreResult {
+        Err(Error::key(key))
     }
 
     fn display(&self) -> &dyn Display {

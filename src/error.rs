@@ -12,4 +12,10 @@ pub enum Error {
     Other(Box<dyn std::error::Error>),
 }
 
+impl Error {
+    pub fn key(k: &str) -> Self {
+        Self::Key(k.to_string())
+    }
+}
+
 pub type Result<T> = std::result::Result<T, Error>;
