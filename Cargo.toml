@@ -1,0 +1,21 @@
+[package]
+name = "graphex"
+version = "0.1.0"
+edition = "2021"
+description = "A small librray to help creating command line tools exploring pseudo graph"
+authors = ["Matthieu Gautier <mgautier@kymeria.fr"]
+repository = "https://github.com/kymeria/graphex"
+license = "MIT"
+
+[dependencies]
+serde = { version = "1.0.197", features = ["derive"], optional = true }
+serde_json = { version = "1.0.114", optional = true }
+erased-serde = { version = "0.4", optional = true }
+thiserror = "1.0.64"
+
+[features]
+serde = ["dep:serde", "dep:serde_json", "dep:erased-serde"]
+
+[dev-dependencies]
+clap = { version = "4.5.18", features = ["derive"] }
+
