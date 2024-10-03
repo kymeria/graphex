@@ -132,12 +132,11 @@ impl Node for Vec<u8> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::display::DisplayResult;
 
     struct StringNode(String);
 
     impl Display for StringNode {
-        fn print(&self, out: &mut Output) -> DisplayResult {
+        fn print(&self, out: &mut Output) -> Result {
             out.write_str(&self.0)
         }
     }
@@ -162,7 +161,7 @@ mod test {
     }
 
     impl Display for Child {
-        fn print(&self, f: &mut Output) -> DisplayResult {
+        fn print(&self, f: &mut Output) -> Result {
             write!(f, "{}: {}", self.name, self.value)
         }
     }
@@ -190,7 +189,7 @@ mod test {
     }
 
     impl Display for Root {
-        fn print(&self, f: &mut Output) -> DisplayResult {
+        fn print(&self, f: &mut Output) -> Result {
             write!(f, "Root : {}\n", self.a)?;
             write!(f.pad(), "{}\n", &display_to_string(&self.b)?)?;
             write!(f.pad(), "{}", &display_to_string(&self.c)?)

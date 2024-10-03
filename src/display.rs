@@ -1,11 +1,9 @@
 use std::{collections::HashMap, fmt::Write};
 
-use crate::error::Error;
-type Result<T> = std::result::Result<T, Error>;
-pub type DisplayResult = Result<()>;
+use crate::error::{Error, Result};
 
 pub trait Display {
-    fn print(&self, out: &mut Output) -> DisplayResult;
+    fn print(&self, out: &mut Output) -> Result;
 }
 
 pub struct Output<'a> {
@@ -25,7 +23,7 @@ impl<'a> Output<'a> {
         Self { output, padding }
     }
 
-    pub fn write_str(&mut self, s: &str) -> DisplayResult {
+    pub fn write_str(&mut self, s: &str) -> Result {
         if s.contains('\n') {
             for l in s.lines() {
                 self.output
@@ -41,12 +39,12 @@ impl<'a> Output<'a> {
         Ok(())
     }
 
-    pub fn write_char(&mut self, c: char) -> DisplayResult {
+    pub fn write_char(&mut self, c: char) -> Result {
         let formated = format!("{}", c);
         self.write_str(&formated)
     }
 
-    pub fn write_fmt(&mut self, args: std::fmt::Arguments<'_>) -> DisplayResult {
+    pub fn write_fmt(&mut self, args: std::fmt::Arguments<'_>) -> Result {
         let formated = format!("{}", args);
         self.write_str(&formated)
     }
@@ -71,7 +69,7 @@ pub struct Mapping<'a> {
 }
 
 impl Mapping<'_> {
-    pub fn item(&mut self, name: &str, value: &impl Display) -> DisplayResult {
+    pub fn item(&mut self, name: &str, value: &impl Display) -> Result {
         let value_str = display_to_string(value)?;
         let multi_line = value_str.contains('\n');
         if multi_line {
@@ -86,7 +84,7 @@ impl Mapping<'_> {
 macro_rules! impl_display {
     ($ty:ty) => {
         impl Display for $ty {
-            fn print(&self, out: &mut Output) -> DisplayResult {
+            fn print(&self, out: &mut Output) -> Result {
                 write!(out, "{}", self)
             }
         }
@@ -102,7 +100,7 @@ impl_display!(
 );
 
 impl Display for &str {
-    fn print(&self, out: &mut Output) -> DisplayResult {
+    fn print(&self, out: &mut Output) -> Result {
         out.write_str(self)
     }
 }
@@ -112,7 +110,7 @@ where
     T: Display,
     U: Display,
 {
-    fn print(&self, out: &mut Output) -> DisplayResult {
+    fn print(&self, out: &mut Output) -> Result {
         let str_0 = display_to_string(&self.0)?;
         let str_1 = display_to_string(&self.1)?;
         let is_multi_line = str_0.contains('\n') || str_1.contains('\n');
@@ -129,7 +127,7 @@ impl<T> Display for Vec<T>
 where
     T: Display,
 {
-    fn print(&self, out: &mut Output) -> DisplayResult {
+    fn print(&self, out: &mut Output) -> Result {
         for v in self.iter() {
             write!(out, "- {}\n", display_to_string(v)?)?;
         }
@@ -141,7 +139,7 @@ impl<T> Display for Option<T>
 where
     T: Display,
 {
-    fn print(&self, out: &mut Output) -> DisplayResult {
+    fn print(&self, out: &mut Output) -> Result {
         match self {
             None => out.write_str("None"),
             Some(v) => v.print(out),
@@ -153,7 +151,7 @@ impl<T> Display for std::rc::Rc<T>
 where
     T: Display,
 {
-    fn print(&self, out: &mut Output) -> DisplayResult {
+    fn print(&self, out: &mut Output) -> Result {
         self.as_ref().print(out)
     }
 }
@@ -162,7 +160,7 @@ impl<T> Display for std::sync::Arc<T>
 where
     T: Display,
 {
-    fn print(&self, out: &mut Output) -> DisplayResult {
+    fn print(&self, out: &mut Output) -> Result {
         self.as_ref().print(out)
     }
 }
@@ -172,7 +170,7 @@ where
     T: Display,
     K: AsRef<str>,
 {
-    fn print(&self, out: &mut Output) -> DisplayResult {
+    fn print(&self, out: &mut Output) -> Result {
         for (key, val) in self.iter() {
             let val_str = display_to_string(val)?;
             let is_multi_line = val_str.contains('\n');
@@ -190,12 +188,12 @@ where
 pub struct AsBytes<'a>(pub &'a [u8]);
 
 impl Display for AsBytes<'_> {
-    fn print(&self, out: &mut Output) -> DisplayResult {
+    fn print(&self, out: &mut Output) -> Result {
         write!(out, "{:?}", &self.0)
     }
 }
 
-pub fn display(node: &dyn Display, out: &mut dyn Write) -> DisplayResult {
+pub fn display(node: &dyn Display, out: &mut dyn Write) -> Result {
     let mut out = Output::new(out);
     node.print(&mut out)
 }
@@ -271,7 +269,7 @@ mod test {
         }
 
         impl Display for Foo {
-            fn print(&self, out: &mut Output) -> DisplayResult {
+            fn print(&self, out: &mut Output) -> Result {
                 let mut mapping = out.mapping("Foo")?;
                 mapping.item("a", &self.a)?;
                 mapping.item("b", &self.b)
@@ -290,7 +288,7 @@ mod test {
         }
 
         impl Display for Foo {
-            fn print(&self, out: &mut Output) -> DisplayResult {
+            fn print(&self, out: &mut Output) -> Result {
                 let mut mapping = out.mapping("Foo")?;
                 mapping.item("a", &self.a)?;
                 mapping.item("b", &self.b)
@@ -321,7 +319,7 @@ mod test {
         }
 
         impl Display for Foo {
-            fn print(&self, out: &mut Output) -> DisplayResult {
+            fn print(&self, out: &mut Output) -> Result {
                 let mut mapping = out.mapping("Foo")?;
                 mapping.item("a", &self.a)?;
                 mapping.item("b", &self.b)
@@ -329,7 +327,7 @@ mod test {
         }
 
         impl Display for Bar {
-            fn print(&self, out: &mut Output) -> DisplayResult {
+            fn print(&self, out: &mut Output) -> Result {
                 let mut mapping = out.mapping("Foo")?;
                 mapping.item("a", &self.a)?;
                 mapping.item("b", &self.b)?;
