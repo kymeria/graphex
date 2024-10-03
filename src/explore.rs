@@ -7,7 +7,9 @@ pub type ExploreResult<'a> = Result<NodeObject<'a>>;
 /// The trait each node must implement.
 /// This trait is templated by the library error, as we may face this error while exploring.
 pub trait Node {
-    fn next(&self, key: &str) -> ExploreResult;
+    fn next(&self, key: &str) -> ExploreResult {
+        Err(Error::key(key))
+    }
 
     fn sep(&self) -> &str {
         "::"
