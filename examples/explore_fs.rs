@@ -32,14 +32,16 @@ impl Node for Directory {
 }
 
 impl graphex::Display for Directory {
-    fn print(&self, out: &mut graphex::Output) -> Result<()> {
-        let mut m = out.mapping(
-            &self
-                .0
-                .file_name()
-                .unwrap_or_else(|| self.0.as_os_str())
-                .to_string_lossy(),
-        )?;
+    fn header_footer(&self) -> Option<(String, String)> {
+        let header = self
+            .0
+            .file_name()
+            .unwrap_or_else(|| self.0.as_os_str())
+            .to_string_lossy()
+            .to_string();
+        Some((header, String::new()))
+    }
+    fn print_content(&self, out: &mut graphex::Output) -> Result {
         for entry in self.0.read_dir().map_err(conv)? {
             let entry = entry.map_err(conv)?;
             let file_type = entry.file_type().map_err(conv)?;
@@ -52,7 +54,7 @@ impl graphex::Display for Directory {
             } else {
                 "Unknown"
             };
-            m.item(&entry.file_name().to_string_lossy(), &type_str)?
+            out.item(&entry.file_name().to_string_lossy(), &type_str)?
         }
         Ok(())
     }
@@ -71,7 +73,7 @@ impl Node for File {
 }
 
 impl graphex::Display for File {
-    fn print(&self, out: &mut Output) -> Result<()> {
+    fn print_content(&self, out: &mut Output) -> Result {
         let content = std::fs::read_to_string(&self.0).map_err(conv)?;
         out.write_str(&content)
     }
@@ -90,7 +92,7 @@ impl Node for Link {
 }
 
 impl graphex::Display for Link {
-    fn print(&self, out: &mut Output) -> Result<()> {
+    fn print_content(&self, out: &mut Output) -> Result {
         let target = self.0.read_link().map_err(conv)?;
         write!(out, "{}", target.display())
     }
