@@ -58,9 +58,29 @@ impl Output<'_> {
         }
     }
 
+    pub fn clone(&mut self) -> Output {
+        Output {
+            output: self.output,
+            padding: self.padding.clone(),
+        }
+    }
+
     pub fn mapping(&mut self, header: &str) -> Result<Mapping> {
-        write!(self, "{header}:\n")?;
-        Ok(Mapping { output: self.pad() })
+        write!(self, "{header} (\n")?;
+        Ok(Mapping {
+            output: self.clone(),
+        })
+    }
+
+    pub fn item(&mut self, name: &str, value: &impl Display) -> Result {
+        let value_str = display_to_string(value)?;
+        let multi_line = value_str.contains('\n');
+        if multi_line {
+            writeln!(self, "{name}:")?;
+            writeln!(self.pad(), "{value_str}")
+        } else {
+            writeln!(self, "{name}: {value_str}")
+        }
     }
 }
 
@@ -70,14 +90,8 @@ pub struct Mapping<'a> {
 
 impl Mapping<'_> {
     pub fn item(&mut self, name: &str, value: &impl Display) -> Result {
-        let value_str = display_to_string(value)?;
-        let multi_line = value_str.contains('\n');
-        if multi_line {
-            writeln!(self.output, "{name}:")?;
-            writeln!(&mut self.output.pad(), "{value_str}")
-        } else {
-            writeln!(self.output, "{name}: {value_str}")
-        }
+        let mut output = self.output.pad();
+        output.item(name, value)
     }
 }
 
@@ -277,7 +291,7 @@ mod test {
         }
 
         let f = Foo { a: 5, b: -5 };
-        assert_eq!(display_to_string(&f).unwrap(), "Foo:\n  a: 5\n  b: -5");
+        assert_eq!(display_to_string(&f).unwrap(), "Foo (\n  a: 5\n  b: -5");
     }
 
     #[test]
@@ -301,7 +315,7 @@ mod test {
         };
         assert_eq!(
             display_to_string(&f).unwrap(),
-            "Foo:\n  a: 5\n  b:\n    - -5\n    - 6"
+            "Foo (\n  a: 5\n  b:\n    - -5\n    - 6"
         );
     }
 
@@ -351,15 +365,15 @@ mod test {
 
         assert_eq!(
             display_to_string(&b).unwrap(),
-            "Foo:
+            "Foo (
   a:
-    Foo:
+    Foo (
       a: 42
       b:
         - Hello
         - World
   b:
-    Foo:
+    Foo (
       a: 56
       b:
         - Bye
