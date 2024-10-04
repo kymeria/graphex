@@ -42,10 +42,6 @@ impl<'a> Output<'a> {
         }
     }
 
-    pub fn new_with_padding(output: &'a mut dyn Write, padding: String) -> Self {
-        Self { output, padding }
-    }
-
     pub fn write_str(&mut self, s: &str) -> Result {
         if s.contains('\n') {
             for l in s.lines() {
@@ -86,13 +82,6 @@ impl<'a> Output<'a> {
         }
     }
 
-    pub fn mapping(&mut self, header: &str) -> Result<Mapping> {
-        write!(self, "{header} (\n")?;
-        Ok(Mapping {
-            output: self.clone(),
-        })
-    }
-
     pub fn item(&mut self, name: &str, value: &impl Display) -> Result {
         let header = if name.is_empty() {
             "- ".to_string()
@@ -123,21 +112,6 @@ impl<'a> Output<'a> {
         } else {
             writeln!(self, "{header} {value_str}")
         }
-    }
-}
-
-pub struct Mapping<'a> {
-    output: Output<'a>,
-}
-
-impl Mapping<'_> {
-    pub fn item(&mut self, name: &str, value: &impl Display) -> Result {
-        let mut output = self.output.pad();
-        output.item(name, value)
-    }
-
-    pub fn close(&mut self) -> Result {
-        writeln!(self.output, ")")
     }
 }
 
