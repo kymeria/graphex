@@ -5,16 +5,25 @@ use crate::display::*;
 pub type ExploreResult<'a> = Result<NodeObject<'a>>;
 
 /// The trait each node must implement.
-/// This trait is templated by the library error, as we may face this error while exploring.
 pub trait Node {
+    /// Returns the next [NodeObject] for `key`.
+    ///
+    /// Must return `Err(Error::Key(...))` if the key is not valid.
     fn next(&self, key: &str) -> ExploreResult {
         Err(Error::key(key))
     }
 
+    /// The separator to use (in [explore]) to split the full key.
     fn sep(&self) -> &str {
         "::"
     }
 
+    /// Get the next node for the full `key`.
+    ///
+    /// This must consume part of the key and return the next node corresponding of the consumed key and part of the key not consumed.
+    /// Returns a tuple (<next_node_object>, Some(<left_key>))
+    ///
+    /// Default implementation split the `key` at `sep` and call `next` using the part of the key before `sep()`.
     fn explore<'k>(&self, key: &'k str) -> Result<(NodeObject, Option<&'k str>)> {
         if let Some((first, left)) = key.split_once(self.sep()) {
             self.next(first).map(|next_node| (next_node, Some(left)))
@@ -23,20 +32,63 @@ pub trait Node {
         }
     }
 
+    /// Returns a `Display` representation of the node.
+    /// Most of the time, implementation is simply :
+    /// ```
+    /// fn display(&self) -> &dyn Display {
+    ///     self
+    /// }
+    /// ```
+    /// as Self will also implement `Display`.
     fn display(&self) -> &dyn Display;
 
+    /// Returns a `erased_serde::Serialize` representation of the node.
+    /// Most of the time, implementation is simply :
+    /// ```
+    /// fn serde(&self) -> Optiom<dyn erased_serde::Serialize> {
+    ///     Some(self)
+    /// }
+    /// ```
+    /// as Self will also implement `serde::Serialize`.
+    ///
+    /// Default implementation is provided (and returns `None`) to not break
+    /// project not using serde (and not implementing this) used with other dependencies
+    /// also using graphex wiht "serde" feature enabled.
+    ///
+    /// This method exists only with "serde" feature enabled.
     #[cfg(all(feature = "serde", feature = "serde_no_default_impl"))]
+    //   #[doc(cfg(feature = "serde"))]
     fn serde(&self) -> Option<&dyn erased_serde::Serialize>;
 
+    /// Returns a `erased_serde::Serialize` representation of the node.
+    /// Most of the time, implementation is simply :
+    /// ```
+    /// fn serde(&self) -> Optiom<dyn erased_serde::Serialize> {
+    ///     Some(self)
+    /// }
+    /// ```
+    /// as Self will also implement `serde::Serialize`.
+    ///
+    /// Default implementation is provided (and returns `None`) to not break
+    /// project not using serde (and not implementing this) used with other dependencies
+    /// also using graphex wiht "serde" feature enabled.
+    ///
+    /// This method exists only with "serde" feature enabled.
     #[cfg(all(feature = "serde", not(feature = "serde_no_default_impl")))]
+    //    #[doc(cfg(feature = "serde"))]
     fn serde(&self) -> Option<&dyn erased_serde::Serialize> {
         None
     }
 }
 
-/// A actuall Node
+/// A actual Node
 ///
-/// May owned a Box or simply borrow it.
+/// While `Node::next()` could have been declared to return a `&dyn Node`, it would have
+/// limiting implementation to only return borrowed values.
+/// But we want to be able to generate the pseudo graph as we explore it and so we need
+/// to return a owned value.
+///
+/// `NodeObject` solves this, it can be a borrowed or a owned value.
 pub enum NodeObject<'a> {
     Borrowed(&'a dyn Node),
     Owned(Box<dyn Node>),
@@ -91,6 +143,9 @@ impl<'a> Node for NodeObject<'a> {
     }
 }
 
+/// Explore a `node` following the `key`.
+///
+/// Once a final node is found, `display` is called on it.
 pub fn explore<Output, F>(node: &dyn Node, key: &str, mut display: F) -> Result<Output>
 where
     F: FnMut(&dyn Node) -> Output,
@@ -105,6 +160,7 @@ where
     }
 }
 
+/// Explore a `node` following the `key` and display it in a string using [display_to_string]
 pub fn explore_to_string(node: &dyn Node, key: &str) -> Result<String> {
     let d = |n: &dyn Node| display_to_string(n.display());
     explore(node, key, d)?

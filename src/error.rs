@@ -1,5 +1,6 @@
 use thiserror::Error;
 
+/// Error type of graphex.
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("Formating error")]
@@ -18,4 +19,5 @@ impl Error {
     }
 }
 
+/// Result type of graphex.
 pub type Result<T = ()> = std::result::Result<T, Error>;

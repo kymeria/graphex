@@ -2,7 +2,27 @@ use std::{collections::HashMap, fmt::Write};
 
 use crate::error::{Error, Result};
 
+/// Display the value to the user.
+///
+/// This trait is kind of similar to `std::fmt::Display`, although far more simple.
+/// This is a different trait than `std::fmt::Display` as graph exploring display may
+/// be different than "classical" display.
 pub trait Display {
+    /// Print the value to `out`.
+    ///
+    /// Default implementation reuse `header_footer` and `print_content` to display
+    /// the value, using a format like:
+    /// ```text
+    /// header
+    ///    content
+    /// footer
+    /// ```
+    /// or simply (if not header/footer):
+    /// ```text
+    /// content
+    /// ```
+    ///
+    /// User should probably not reimplement `print`.
     fn print(&self, out: &mut Output) -> Result {
         if let Some((header, footer)) = self.header_footer() {
             if !header.is_empty() {
@@ -18,23 +38,60 @@ pub trait Display {
         Ok(())
     }
 
+    /// Return the header and footer of the value.
+    ///
+    /// Default implementation returns `None`.
+    /// One may want to implement it as:
+    /// - `Some((String::from("Foo:"), String::new()))`
+    /// - `Some((String::from("Foo("), String::from(")")))`
     fn header_footer(&self) -> Option<(String, String)> {
         None
     }
 
+    /// Print the content of the value.
+    ///
+    /// If value is kind of a struct, `header_footer` should be implemented and
+    /// `print_content` should print only the fields of the value.
+    /// Else, `print_content` should simply print the value.
     fn print_content(&self, out: &mut Output) -> Result;
 
+    /// Tell if value display can start on same line than prefix.
+    ///
+    /// When the value render on several line and displayed as field value of parent structure,
+    /// if `strat_same_line()` is `true`,
+    /// the first line will be display on the same line of the field prefix:
+    /// ```text
+    /// foo: <first line>
+    ///   <other lines>
+    ///   ...
+    /// ```
+    ///
+    /// When `start_same_line()` is `false`:
+    /// ```text
+    /// foo:
+    ///    <first line>
+    ///    <other lines>
+    ///    ...
+    /// ```
     fn start_same_line(&self) -> bool {
         self.header_footer().is_some()
     }
 }
 
+/// A output where to write the value.
+///
+/// Output mainly tracks the current padding and properly apply it to content to display.
+/// This allow to print hierarchical content easily.
+///
+/// It implements `write_str` so it is possible to use `write!(out, "{}", value)` on it.
+///
 pub struct Output<'a> {
     output: &'a mut dyn Write,
     padding: String,
 }
 
 impl<'a> Output<'a> {
+    /// Create a new output from a `std::fmt::Write`.
     pub fn new(output: &'a mut dyn Write) -> Self {
         Self {
             output,
@@ -42,6 +99,7 @@ impl<'a> Output<'a> {
         }
     }
 
+    /// Apply padding to `s` before printing it to inner output.
     pub fn write_str(&mut self, s: &str) -> Result {
         if s.contains('\n') {
             for l in s.lines() {
@@ -58,16 +116,19 @@ impl<'a> Output<'a> {
         Ok(())
     }
 
+    /// Apply padding to `c` before printing it to inner output.
     pub fn write_char(&mut self, c: char) -> Result {
         let formated = format!("{}", c);
         self.write_str(&formated)
     }
 
+    /// Apply padding to `args` before printing it to inner output.
     pub fn write_fmt(&mut self, args: std::fmt::Arguments<'_>) -> Result {
         let formated = format!("{}", args);
         self.write_str(&formated)
     }
 
+    /// Create a new (sub) output with a new level of indentation.
     pub fn pad(&mut self) -> Output {
         Output {
             output: self.output,
@@ -75,6 +136,7 @@ impl<'a> Output<'a> {
         }
     }
 
+    /// Create a new (sub) ouptput with the same level of indentation.
     pub fn clone(&mut self) -> Output {
         Output {
             output: self.output,
@@ -82,6 +144,21 @@ impl<'a> Output<'a> {
         }
     }
 
+    /// Display a value with a prefix.
+    ///
+    /// Mostly equivalent to `writeln!("- {name}: {value}")` but properly handle:
+    /// - When `name` is empty: `writeln!("- {value}")`.
+    /// - `value` displays on several lines: correctly display first line of value in
+    ///   same line of prefix if `start_same_line()` is `true` and apply padding.
+    ///
+    /// Prefer using this method in [Display::print_content] as
+    /// ```
+    /// out.item("foo", &self.foo)
+    /// ```
+    /// instead of
+    /// ```
+    /// writeln!(out, "- foo: {}", display_to_string(&self.foo))
+    /// ```
     pub fn item(&mut self, name: &str, value: &impl Display) -> Result {
         let header = if name.is_empty() {
             "- ".to_string()
@@ -212,7 +289,24 @@ where
     }
 }
 
-pub struct AsBytes<'a>(pub &'a [u8]);
+/// A wrapper structure on a `&[u8]` to display it as a bytes value instead of array of u8.
+///
+/// `Vec<T>` implement [Display] to display itself as :
+/// ```text
+/// - <self[0]>
+/// - <self[1]>
+/// - ...
+/// ```
+///
+/// But when handling array (Vec or slice) of `u8`, we may want to display it as
+/// `[5, 6, 42, 96, 254, ...]` instead.
+/// `AsBytes` allow this:
+/// ```
+/// use graphex::*;
+/// let data = vec![5_u8, 6_u8, 42_u8, 96_u8];
+/// assert_eq!(display_to_string(&AsBytes(&data)).unwrap(), "[5, 6, 42, 96]");
+/// ```
+pub struct AsBytes<'a>(#[doc(hidden)] pub &'a [u8]);
 
 impl Display for AsBytes<'_> {
     fn print_content(&self, out: &mut Output) -> Result {
@@ -220,11 +314,13 @@ impl Display for AsBytes<'_> {
     }
 }
 
+/// Display the node to whatever implement `std::fmt::Write`.
 pub fn display(node: &dyn Display, out: &mut dyn Write) -> Result {
     let mut out = Output::new(out);
     node.print(&mut out)
 }
 
+/// Display the node to a String and return it.
 pub fn display_to_string(node: &dyn Display) -> Result<String> {
     let mut output = String::new();
     display(node, &mut output)?;
