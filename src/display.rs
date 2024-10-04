@@ -152,11 +152,11 @@ impl<'a> Output<'a> {
     ///   same line of prefix if `start_same_line()` is `true` and apply padding.
     ///
     /// Prefer using this method in [Display::print_content] as
-    /// ```
+    /// ```ignore
     /// out.item("foo", &self.foo)
     /// ```
     /// instead of
-    /// ```
+    /// ```ignore
     /// writeln!(out, "- foo: {}", display_to_string(&self.foo))
     /// ```
     pub fn item(&mut self, name: &str, value: &impl Display) -> Result {

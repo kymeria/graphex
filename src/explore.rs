@@ -35,9 +35,14 @@ pub trait Node {
     /// Returns a `Display` representation of the node.
     /// Most of the time, implementation is simply :
     /// ```
+    /// # use graphex::*;
+    /// # struct T();
+    /// # impl Display for T { fn print_content(&self, out: &mut Output) -> Result { Ok(()) } }
+    /// # impl Node for T {
     /// fn display(&self) -> &dyn Display {
     ///     self
     /// }
+    /// # }
     /// ```
     /// as Self will also implement `Display`.
     fn display(&self) -> &dyn Display;
@@ -45,10 +50,18 @@ pub trait Node {
     /// Returns a `erased_serde::Serialize` representation of the node.
     /// Most of the time, implementation is simply :
     /// ```
-    /// fn serde(&self) -> Optiom<dyn erased_serde::Serialize> {
+    /// # use graphex::*;
+    /// # #[derive(serde::Serialize)]
+    /// # struct T();
+    /// # impl Display for T { fn print_content(&self, out: &mut Output) -> Result { Ok(()) } }
+    /// # impl Node for T {
+    /// # fn display(&self) -> &dyn Display { self }
+    /// fn serde(&self) -> Option<&dyn erased_serde::Serialize> {
     ///     Some(self)
     /// }
+    /// # }
     /// ```
+
     /// as Self will also implement `serde::Serialize`.
     ///
     /// Default implementation is provided (and returns `None`) to not break
@@ -63,9 +76,16 @@ pub trait Node {
     /// Returns a `erased_serde::Serialize` representation of the node.
     /// Most of the time, implementation is simply :
     /// ```
-    /// fn serde(&self) -> Optiom<dyn erased_serde::Serialize> {
+    /// # use graphex::*;
+    /// # #[derive(serde::Serialize)]
+    /// # struct T();
+    /// # impl Display for T { fn print_content(&self, out: &mut Output) -> Result { Ok(()) } }
+    /// # impl Node for T {
+    /// # fn display(&self) -> &dyn Display { self }
+    /// fn serde(&self) -> Option<&dyn erased_serde::Serialize> {
     ///     Some(self)
     /// }
+    /// # }
     /// ```
     /// as Self will also implement `serde::Serialize`.
     ///
