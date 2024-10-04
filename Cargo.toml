@@ -15,6 +15,7 @@ thiserror = "1.0.64"
 
 [features]
 serde = ["dep:serde", "dep:serde_json", "dep:erased-serde"]
+serde_no_default_impl = []
 
 [dev-dependencies]
 clap = { version = "4.5.18", features = ["derive"] }

@@ -25,7 +25,10 @@ pub trait Node {
 
     fn display(&self) -> &dyn Display;
 
-    #[cfg(feature = "serde")]
+    #[cfg(all(feature = "serde", feature = "serde_no_default_impl"))]
+    fn serde(&self) -> Option<&dyn erased_serde::Serialize>;
+
+    #[cfg(all(feature = "serde", not(feature = "serde_no_default_impl")))]
     fn serde(&self) -> Option<&dyn erased_serde::Serialize> {
         None
     }
