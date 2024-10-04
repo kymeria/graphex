@@ -81,6 +81,14 @@ impl<'a> Node for NodeObject<'a> {
             Self::Owned(o) => o.display(),
         }
     }
+
+    #[cfg(feature = "serde")]
+    fn serde(&self) -> Option<&dyn erased_serde::Serialize> {
+        match self {
+            Self::Borrowed(b) => b.serde(),
+            Self::Owned(o) => o.serde(),
+        }
+    }
 }
 
 pub fn explore<Output, F>(node: &dyn Node, key: &str, mut display: F) -> Result<Output>
@@ -110,6 +118,11 @@ impl Node for String {
     fn next(&self, key: &str) -> ExploreResult {
         Err(Error::key(key))
     }
+
+    #[cfg(feature = "serde")]
+    fn serde(&self) -> Option<&dyn erased_serde::Serialize> {
+        Some(self)
+    }
 }
 
 impl Node for &str {
@@ -120,6 +133,11 @@ impl Node for &str {
     fn next(&self, key: &str) -> ExploreResult {
         Err(Error::key(key))
     }
+
+    #[cfg(feature = "serde")]
+    fn serde(&self) -> Option<&dyn erased_serde::Serialize> {
+        Some(self)
+    }
 }
 
 impl Node for Vec<u8> {
@@ -129,6 +147,11 @@ impl Node for Vec<u8> {
 
     fn next(&self, key: &str) -> ExploreResult {
         Err(Error::key(key))
+    }
+
+    #[cfg(feature = "serde")]
+    fn serde(&self) -> Option<&dyn erased_serde::Serialize> {
+        Some(self)
     }
 }
 
