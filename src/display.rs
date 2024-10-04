@@ -105,12 +105,12 @@ impl<'a> Output<'a> {
             for l in s.lines() {
                 self.output
                     .write_str(&format!("{}{l}\n", self.padding))
-                    .map_err(|e| Error::Fmt(e))?;
+                    .map_err(Error::Fmt)?;
             }
         } else {
             self.output
                 .write_str(&format!("{}{s}", self.padding))
-                .map_err(|e| Error::Fmt(e))?;
+                .map_err(Error::Fmt)?;
         }
 
         Ok(())
@@ -170,17 +170,14 @@ impl<'a> Output<'a> {
         if multi_line {
             if value.start_same_line() {
                 let mut first = true;
-                value_str
-                    .lines()
-                    .map(|l| {
-                        if first {
-                            first = false;
-                            writeln!(self, "{header} {l}")
-                        } else {
-                            writeln!(self, "{l}")
-                        }
-                    })
-                    .collect::<std::result::Result<_, _>>()?;
+                value_str.lines().try_for_each(|l| {
+                    if first {
+                        first = false;
+                        writeln!(self, "{header} {l}")
+                    } else {
+                        writeln!(self, "{l}")
+                    }
+                })?;
                 Ok(())
             } else {
                 writeln!(self, "{}", header)?;
@@ -240,7 +237,7 @@ where
 {
     fn print_content(&self, out: &mut Output) -> Result {
         for v in self.iter() {
-            write!(out, "- {}\n", display_to_string(v)?)?;
+            writeln!(out, "- {}", display_to_string(v)?)?;
         }
         Ok(())
     }
