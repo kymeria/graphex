@@ -1,4 +1,3 @@
-use clap::Parser;
 use graphex::*;
 use std::path::PathBuf;
 
@@ -98,15 +97,23 @@ impl graphex::Display for Link {
     }
 }
 
-#[derive(Parser)]
 struct Cli {
     path: PathBuf,
-
     key: String,
 }
 
+fn parse_cmd() -> Cli {
+    let path = std::env::args().nth(1).expect("no root path given");
+    let key = std::env::args().nth(2).expect("no key given");
+
+    Cli {
+        path: std::path::PathBuf::from(path),
+        key,
+    }
+}
+
 fn main() {
-    let cli = Cli::parse();
+    let cli = parse_cmd();
 
     let root = Directory(cli.path.clone());
 
