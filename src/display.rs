@@ -146,9 +146,8 @@ impl<'a> Output<'a> {
 
     /// Display a value with a prefix.
     ///
-    /// Mostly equivalent to `writeln!("- {name}: {value}")` but properly handle:
-    /// - When `name` is empty: `writeln!("- {value}")`.
-    /// - `value` displays on several lines: correctly display first line of value in
+    /// Mostly equivalent to `writeln!("{header} {value}")` but properly handle
+    /// when `value` displays on several lines: correctly display first line of value in
     ///   same line of prefix if `start_same_line()` is `true` and apply padding.
     ///
     /// Prefer using this method in [Display::print_content] as
@@ -157,14 +156,13 @@ impl<'a> Output<'a> {
     /// ```
     /// instead of
     /// ```ignore
-    /// writeln!(out, "- foo: {}", display_to_string(&self.foo))
+    /// writeln!(out, "foo {}", display_to_string(&self.foo))
     /// ```
-    pub fn item(&mut self, name: &str, value: &impl Display) -> Result {
-        let header = if name.is_empty() {
-            "- ".to_string()
-        } else {
-            format!("- {name}:")
-        };
+    pub fn item(
+        &mut self,
+        header: &(impl std::fmt::Display + ?Sized),
+        value: &impl Display,
+    ) -> Result {
         let value_str = display_to_string(value)?;
         let multi_line = value_str.contains('\n');
         if multi_line {
@@ -186,6 +184,46 @@ impl<'a> Output<'a> {
         } else {
             writeln!(self, "{header} {value_str}")
         }
+    }
+
+    /// Display a value with a name.
+    ///
+    /// Mostly equivalent to `writeln!("- {name}: {value}")` but properly handle
+    /// when `value` displays on several lines: correctly display first line of value in
+    ///   same line of prefix if `start_same_line()` is `true` and apply padding.
+    ///
+    /// Prefer using this method in [Display::print_content] as
+    /// ```ignore
+    /// out.field("foo", &self.foo)
+    /// ```
+    /// instead of
+    /// ```ignore
+    /// writeln!(out, "- foo: {}", display_to_string(&self.foo))
+    /// ```
+    pub fn field(
+        &mut self,
+        name: &(impl std::fmt::Display + ?Sized),
+        value: &impl Display,
+    ) -> Result {
+        self.item(&format!("- {name}:"), value)
+    }
+
+    /// Display a value.
+    ///
+    /// Mostly equivalent to `writeln!("- {value}")` but properly handle
+    /// when `value` displays on several lines: correctly display first line of value in
+    ///   same line of prefix if `start_same_line()` is `true` and apply padding.
+    ///
+    /// Prefer using this method in [Display::print_content] as
+    /// ```ignore
+    /// out.entry(&self.foo)
+    /// ```
+    /// instead of
+    /// ```ignore
+    /// writeln!(out, "- {}", display_to_string(&self.foo))
+    /// ```
+    pub fn entry(&mut self, value: &impl Display) -> Result {
+        self.item(&"-", value)
     }
 }
 
@@ -237,7 +275,7 @@ where
 {
     fn print_content(&self, out: &mut Output) -> Result {
         for v in self.iter() {
-            writeln!(out, "- {}", display_to_string(v)?)?;
+            out.entry(v)?;
         }
         Ok(())
     }
@@ -280,7 +318,7 @@ where
 {
     fn print_content(&self, out: &mut Output) -> Result {
         for (key, val) in self.iter() {
-            out.item(key.as_ref(), val)?;
+            out.field(key.as_ref(), val)?;
         }
         Ok(())
     }
@@ -394,8 +432,8 @@ mod test {
             }
 
             fn print_content(&self, out: &mut Output) -> Result {
-                out.item("a", &self.a)?;
-                out.item("b", &self.b)
+                out.field("a", &self.a)?;
+                out.field("b", &self.b)
             }
         }
 
@@ -415,8 +453,8 @@ mod test {
                 Some(("Foo:".to_string(), String::new()))
             }
             fn print_content(&self, out: &mut Output) -> Result {
-                out.item("a", &self.a)?;
-                out.item("b", &self.b)
+                out.field("a", &self.a)?;
+                out.field("b", &self.b)
             }
         }
 
@@ -448,8 +486,8 @@ mod test {
                 Some(("Foo:".to_string(), String::new()))
             }
             fn print_content(&self, out: &mut Output) -> Result {
-                out.item("a", &self.a)?;
-                out.item("b", &self.b)
+                out.field("a", &self.a)?;
+                out.field("b", &self.b)
             }
         }
 
@@ -458,9 +496,9 @@ mod test {
                 Some(("Bar:".to_string(), String::new()))
             }
             fn print_content(&self, out: &mut Output) -> Result {
-                out.item("a", &self.a)?;
-                out.item("b", &self.b)?;
-                out.item("c", &AsBytes(&self.c))
+                out.field("a", &self.a)?;
+                out.field("b", &self.b)?;
+                out.field("c", &AsBytes(&self.c))
             }
         }
 
