@@ -2,8 +2,8 @@
 name = "graphex"
 version = "0.2.0"
 edition = "2021"
-description = "A small librray to help creating command line tools exploring pseudo graph"
-authors = ["Matthieu Gautier <mgautier@kymeria.fr"]
+description = "A small library to help creating command line tools exploring pseudo graph"
+authors = ["Matthieu Gautier <mgautier@kymeria.fr>"]
 repository = "https://github.com/kymeria/graphex"
 license = "MIT"
 
